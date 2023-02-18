@@ -1,8 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Diagnostics;
 
 namespace NBoardLocalGameServer
@@ -13,17 +10,21 @@ namespace NBoardLocalGameServer
     /// </summary>
     internal class EngineProcess
     {
-        public bool HasExited => this.process.HasExited;
-        public event EventHandler Exited { add => this.process.Exited += value; remove => this.process.Exited -= value; }
+        public bool HasExited => this.PROCESS.HasExited;
+        public event EventHandler Exited { add => this.PROCESS.Exited += value; remove => this.PROCESS.Exited -= value; }
 
-        Process process;
-        Queue<string> recievedLines = new();
+        readonly Process PROCESS;
+        readonly Queue<string> recievedLines = new();
 
+        /// <summary>
+        /// 実際にエンジンのプロセスはEngineProcess.Startメソッドで行うので, コンストラクタはprivate.
+        /// </summary>
+        /// <param name="process"></param>
         EngineProcess(Process process)
         {
-            this.process = process;
-            this.process.OutputDataReceived += Process_OutputDataReceived;
-            this.process.BeginOutputReadLine();
+            this.PROCESS = process;
+            this.PROCESS.OutputDataReceived += Process_OutputDataReceived;
+            this.PROCESS.BeginOutputReadLine();
         }
         
         /// <summary>
@@ -53,17 +54,17 @@ namespace NBoardLocalGameServer
 
         public void SendCommand(string cmd)
         {
-            Debug.WriteLine($"Server -> {this.process.ProcessName}(PID: {this.process.Id}): {cmd}");
-            this.process.StandardInput.WriteLine(cmd);
+            Debug.WriteLine($"Server -> {this.PROCESS.ProcessName}(PID: {this.PROCESS.Id}): {cmd}");
+            this.PROCESS.StandardInput.WriteLine(cmd);
         }
 
-        public void WaitForExit(int timeoutMs) => this.process.WaitForExit(timeoutMs);
+        public void WaitForExit(int timeoutMs) => this.PROCESS.WaitForExit(timeoutMs);
 
         void Process_OutputDataReceived(object sender, DataReceivedEventArgs e)
         {
             if (e.Data is not null)
             {
-                Debug.WriteLine($"{this.process.ProcessName}(PID: {this.process.Id}) -> Server: {e.Data}");
+                Debug.WriteLine($"{this.PROCESS.ProcessName}(PID: {this.PROCESS.Id}) -> Server: {e.Data}");
                 this.recievedLines.Enqueue(e.Data);
             }
         }

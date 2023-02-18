@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace NBoardLocalGameServer
+﻿namespace NBoardLocalGameServer
 {
     static class Program
     {
