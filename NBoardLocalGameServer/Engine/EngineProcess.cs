@@ -13,6 +13,8 @@ namespace NBoardLocalGameServer.Engine
     /// </summary>
     internal class EngineProcess
     {
+        public string Name => this.PROCESS.ProcessName;
+        public int PID => this.PROCESS.Id;
         public bool HasExited => this.PROCESS.HasExited;
         public event EventHandler Exited { add => this.PROCESS.Exited += value; remove => this.PROCESS.Exited -= value; }
 
@@ -141,11 +143,12 @@ namespace NBoardLocalGameServer.Engine
 
             public Responce(string cmd) => (this.Command, this.result) = (cmd, new ResponceValueFuture { Value = string.Empty });
 
-            public void Wait(int timeoutMs)
+            public bool Wait(int timeoutMs)
             {
                 var start = Environment.TickCount;
                 while (this.result.Value is null && Environment.TickCount - start < timeoutMs)
                     Thread.Yield();
+                return this.HasResult;
             }
         }
 

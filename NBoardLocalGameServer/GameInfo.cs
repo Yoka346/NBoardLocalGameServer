@@ -48,7 +48,7 @@ namespace NBoardLocalGameServer.Engine
             var sb = new StringBuilder("(;GM[Othello]PC[");
             sb.Append(Assembly.GetExecutingAssembly().GetName().Name).Append("]DT[");
             sb.Append(this.DateTime.ToString()).Append("]PB[");
-            sb.Append(this.BlackPlayerName).Append("]PW");
+            sb.Append(this.BlackPlayerName).Append("]PW[");
             sb.Append(this.WhitePlayerName).Append("]RE[?]BT[");
             sb.Append(this.BlackThinkingTimeMs.ToString()).Append("]WT[");
             sb.Append(this.WhiteThinkingTimeMs.ToString()).Append("]TY[");
@@ -59,11 +59,6 @@ namespace NBoardLocalGameServer.Engine
             for (var coord = BoardCoordinate.A1; coord <= BoardCoordinate.H8; coord++)
                 sb.Append(discs[(int)this.Position.GetSquareColorAt(coord)]);
             sb.Append(' ').Append(discs[(int)this.Position.SideToMove]).Append(']');
-
-            // 着手情報の構成.
-            Span<char> colors = stackalloc char[3] { 'B', 'W', '?' };
-            foreach (var (color, coord) in this.Position.EnumeratePastMoves())
-                sb.Append(colors[(int)color]).Append('[').Append(coord.ToString()).Append(']');
 
             return sb.Append(";)").ToString();
         }

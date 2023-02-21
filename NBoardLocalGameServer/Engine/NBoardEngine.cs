@@ -2,13 +2,10 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.IO;
-using System.Text;
 using System.Text.Json;
-using System.Threading.Tasks;
-using System.Runtime.CompilerServices;
-using NBoardLocalGameServer.Reversi;
-using System.Security.Cryptography.X509Certificates;
 using System.Threading;
+
+using NBoardLocalGameServer.Reversi;
 
 namespace NBoardLocalGameServer.Engine
 {
@@ -24,9 +21,9 @@ namespace NBoardLocalGameServer.Engine
         /// </summary>
         public string[] InitialCommands { get; set; }
 
-        public EngineConfig() : this("", "", "", Array.Empty<string>(), 0) { }
+        public EngineConfig() : this("", "", "", Enumerable.Empty<string>()) { }
 
-        public EngineConfig(string path, string args, string workDir, IEnumerable<string> initialCmds, int milliSecPerMove)
+        public EngineConfig(string path, string args, string workDir, IEnumerable<string> initialCmds)
         {
             this.Path = path;
             this.Arguments = args;
@@ -62,10 +59,7 @@ namespace NBoardLocalGameServer.Engine
         /// </summary>
         public string? Name { get; private set; }
 
-        /// <summary>
-        /// 起動時に送ったpingコマンドに対し, pongコマンドが返ってきたかどうか.
-        /// </summary>
-        public bool Connected { get; private set; } = false;
+        public string? ProcName => this.process?.Name;
 
         public bool QuitCommandWasSent => this.quitCommandWasSent;
         public bool IsAlive => (this.process is not null) && !this.process.HasExited;
@@ -105,11 +99,12 @@ namespace NBoardLocalGameServer.Engine
             this.process.Exited += Process_Exited;
             this.process.OnNonResponceTextRecieved += Process_OnNonResponceTextRecieved;
 
-            this.process.SendCommand($"nboard {NBOARD_VERSION}");
+            SendCommand($"nboard {NBOARD_VERSION}");
 
-            var pingID = this.pingCount++;
-            var responce = this.process.SendCommand($"ping {pingID}", $"^\\s*pong\\s+{pingID}");
-            return this.Connected = CheckConnection();
+            foreach (var cmd in this.CONFIG.InitialCommands)
+                SendCommand(cmd);
+
+            return true;
         }
 
         public bool Quit(int timeoutMs)
@@ -118,7 +113,7 @@ namespace NBoardLocalGameServer.Engine
                 return false;
 
             this.quitCommandWasSent = true;
-            this.process.SendCommand("quit");
+            SendCommand("quit");
             this.process.WaitForExit(timeoutMs);
             return !this.IsAlive;
         }
@@ -138,35 +133,13 @@ namespace NBoardLocalGameServer.Engine
         }
 
         public void SetTime(DiscColor color, GameTime time)
-            => this.process?.SendCommand($"set time {color} main {time.MainTimeMs} inc {time.IncrementTimeMs} byoyomi {time.ByoYomiMs}");
+            => SendCommand($"set time {color} main {time.MainTimeMs} inc {time.IncrementTimeMs} byoyomi {time.ByoYomiMs}");
 
-        public void SetGameInfo(GameInfo gameInfo)
-        {
-            if (this.process is null)
-                throw new InvalidOperationException("Engine process is not running.");
+        public void SetLevel(int level) => SendCommand($"set depth {level}");
 
-            if (!CheckConnection())
-            {
-                var name = this.Name ?? this.process.Name;
-                throw new EngineConnectionException($"{name}({this.process.PID})");
-            }
+        public void SetGameInfo(GameInfo gameInfo) => SendCommand($"set game {gameInfo.ToGGFString()}");
 
-            this.process.SendCommand($"set game {gameInfo.ToGGFString()}");
-        }
-
-        public void SendMove(BoardCoordinate move)
-        {
-            if (this.process is null)
-                throw new InvalidOperationException("Engine process is not running.");
-
-            if (!CheckConnection())
-            {
-                var name = this.Name ?? this.process.Name;
-                throw new EngineConnectionException($"{name}({this.process.PID})");
-            }
-
-            this.process.SendCommand($"move {move}");
-        }
+        public void SendMove(BoardCoordinate move) => SendCommand($"move {move}");
 
         public (BoardCoordinate coord, int ellapsedMs) Think()
         {
@@ -176,7 +149,7 @@ namespace NBoardLocalGameServer.Engine
             if (Interlocked.Exchange(ref this.isThinking, 1) == 1)
                 throw new InvalidOperationException("Cannnot execute multiple thinking.");
 
-            var responce = this.process.SendCommand("go", "^\\s*===");
+            var responce = SendCommand("go", "^\\s*===");
             var startTime = Environment.TickCount;
 
             while (!responce.HasResult && this.IsThinking) 
@@ -194,11 +167,25 @@ namespace NBoardLocalGameServer.Engine
             if (idx != -1)
                 moveStr = moveStr[..idx];
 
-            var move = ReversiTypes.ParseCoordinate(ref moveStr);
+            var move = ReversiTypes.ParseCoordinate(moveStr);
             if (move == BoardCoordinate.Null)
                 throw new NBoardProtocolException($"Recieved move string \"{moveStr}\" was invalid.");
 
             return (move, endTime - startTime);
+        }
+
+        EngineProcess.Responce SendCommand(string cmd, string? regex = null)
+        {
+            if (this.process is null)
+                throw new InvalidOperationException("Engine process is not running.");
+
+            if (!CheckConnection())
+            {
+                var name = this.Name ?? this.process.Name;
+                throw new EngineConnectionException($"{name}({this.process.PID})");
+            }
+
+            return this.process.SendCommand(cmd ,regex);
         }
 
         bool CheckConnection(int timeoutMs = CONNECTION_CHECK_TIMEOUT_MS)

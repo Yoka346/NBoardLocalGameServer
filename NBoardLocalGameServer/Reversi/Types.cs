@@ -47,7 +47,7 @@ namespace NBoardLocalGameServer.Reversi
 
     internal static class ReversiTypes
     {
-        public static BoardCoordinate ParseCoordinate(ref ReadOnlySpan<char> str)
+        public static BoardCoordinate ParseCoordinate(ReadOnlySpan<char> str)
         {
             str = str.Trim();
             Span<char> lstr = stackalloc char[str.Length];
