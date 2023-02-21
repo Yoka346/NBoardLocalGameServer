@@ -26,15 +26,7 @@ namespace NBoardLocalGameServer
         /// <returns></returns>
         public ReadOnlySpan<char> Read()
         {
-            var canRead = false;
-            for (; this.position < this.STR.Length; this.position++)
-                if (!WHITESPACE.Contains(this.STR[this.position]))
-                {
-                    canRead = true;
-                    break;
-                }
-
-            if (!canRead)
+            if (!SkipWhiteSpace())
                 return "\0".AsSpan();
 
             int count;
@@ -51,20 +43,20 @@ namespace NBoardLocalGameServer
         /// <returns></returns>
         public ReadOnlySpan<char> ReadToEnd()
         {
-            var canRead = false;
-            for (; this.position < this.STR.Length; this.position++)
-                if (!WHITESPACE.Contains(this.STR[this.position]))
-                {
-                    canRead = true;
-                    break;
-                }
-
-            if (!canRead)
+            if (!SkipWhiteSpace())
                 return "\0";
 
             var ret = this.STR.AsSpan(this.position, this.STR.Length - this.position);
             this.position = this.STR.Length;
             return ret;
+        }
+
+        bool SkipWhiteSpace()
+        {
+            for (; this.position < this.STR.Length; this.position++)
+                if (!WHITESPACE.Contains(this.STR[this.position]))
+                    return true;
+            return false;
         }
     }
 }
