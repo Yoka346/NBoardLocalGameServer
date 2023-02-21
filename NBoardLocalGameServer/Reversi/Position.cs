@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 using System.Numerics;
 
 namespace NBoardLocalGameServer.Reversi
@@ -10,7 +11,6 @@ namespace NBoardLocalGameServer.Reversi
     /// </summary>
     internal class Position
     {
-
         public DiscColor SideToMove 
         { 
             get => this.sideToMove;
@@ -84,14 +84,20 @@ namespace NBoardLocalGameServer.Reversi
             return (owner == Player.Current) ? this.sideToMove : this.OpponentColor;
         }
 
+        public IEnumerable<(DiscColor color, BoardCoordinate coord)> EnumeratePastMoves(bool firstPlayFirstOut = true)
+        {
+            var e = this.moveHistory.Select(x => (x.Color, x.Coord));
+            return firstPlayFirstOut ? e.Reverse() : e;
+        }
+
         public bool IsLegal(BoardCoordinate coord) 
-            => (coord == BoardCoordinate.Pass) ? this.CanPass : ((this.bitboard.CalculatePlayerMobility() & COORD_TO_BIT[(byte)coord]) != 0);
+            => (coord == BoardCoordinate.PA) ? this.CanPass : ((this.bitboard.CalculatePlayerMobility() & COORD_TO_BIT[(byte)coord]) != 0);
 
         public void Pass()
         {
             this.sideToMove = this.OpponentColor;
             this.bitboard.Swap();
-            this.moveHistory.Push(new Move(BoardCoordinate.Pass));
+            this.moveHistory.Push(new Move(this.OpponentColor, BoardCoordinate.PA));
         }
 
         public void PutPlayerDiscAt(BoardCoordinate coord) => this.bitboard.PutPlayerDiscAt(coord);
@@ -117,6 +123,7 @@ namespace NBoardLocalGameServer.Reversi
 
             var m = new Move
             {
+                Color= this.sideToMove,
                 Coord = move,
                 Flipped = this.bitboard.CalculateFlippedDiscs(move)
             };

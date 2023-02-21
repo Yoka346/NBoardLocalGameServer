@@ -1,5 +1,9 @@
-﻿namespace NBoardLocalGameServer.Reversi
+﻿using System;
+
+namespace NBoardLocalGameServer.Reversi
 {
+    using static Constants;
+
     enum DiscColor : byte
     {
         Black = 0,
@@ -24,18 +28,36 @@
         A6, B6, C6, D6, E6, F6, G6, H6,
         A7, B7, C7, D7, E7, F7, G7, H7,
         A8, B8, C8, D8, E8, F8, G8, H8,
-        Pass, Null
+        PA, Null
     };
 
     struct Move
     {
+        public DiscColor Color { get; set; }
         public BoardCoordinate Coord { get; set; }
         public ulong Flipped { get; set; }
 
-        public Move(BoardCoordinate coord = BoardCoordinate.Null, ulong flipped = 0)
+        public Move(DiscColor color = DiscColor.Null, BoardCoordinate coord = BoardCoordinate.Null, ulong flipped = 0)
         {
+            this.Color = color;
             this.Coord = coord;
             this.Flipped = flipped;
+        }
+    }
+
+    internal static class ReversiTypes
+    {
+        public static BoardCoordinate ParseCoordinate(ref ReadOnlySpan<char> str)
+        {
+            str = str.Trim();
+            Span<char> lstr = stackalloc char[str.Length];
+            for (var i = 0; i < lstr.Length; i++)
+                lstr[i] = char.ToLower(str[i]);
+
+            if (str.Length < 2 || lstr[0] < 'a' || lstr[0] > 'h' || lstr[1] < '1' || lstr[1] > '8')
+                return BoardCoordinate.Null;
+
+            return (BoardCoordinate)(lstr[0] + lstr[1] * BOARD_SIZE);
         }
     }
 }

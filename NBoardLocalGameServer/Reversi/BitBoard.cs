@@ -85,8 +85,8 @@ namespace NBoardLocalGameServer.Reversi
         public void Undo(BoardCoordinate coord, ulong flipped)
         {
             var player = this.Player;
-            this.Player = this.Opponent ^= flipped;
-            this.Opponent = player ^ (COORD_TO_BIT[(byte)coord] | flipped);
+            this.Player = this.Opponent ^ (COORD_TO_BIT[(byte)coord] | flipped);
+            this.Opponent = player | flipped;
         }
 
         public void Swap() => (this.Player, this.Opponent) = (this.Opponent, this.Player);
@@ -336,13 +336,13 @@ namespace NBoardLocalGameServer.Reversi
                 flip9 = Sse2.And(Sse2.CompareNotEqual(outflank9.AsDouble(), Vector128<ulong>.Zero.AsDouble()).AsUInt64(), flip9);
             }
 
-            if (outflankLeft1 == 0)
+            if (outflankLeft1 == 0UL)
                 flip1Left = 0UL;
-            if (outflankLeft8 == 0)
+            if (outflankLeft8 == 0UL)
                 flip8Left = 0UL;
-            if (outflankRight1 == 0)
+            if (outflankRight1 == 0UL)
                 flip1Right = 0UL;
-            if (outflankRight8 == 0)
+            if (outflankRight8 == 0UL)
                 flip8Right = 0UL;
 
             var flippedDiscs2 = Sse2.Or(flip7, flip9);

@@ -24,7 +24,7 @@ namespace NBoardLocalGameServer
         /// offsetから空白文字以外の文字が始まる位置を探し、そこから次の空白文字までの部分文字列を返す.
         /// </summary>
         /// <returns></returns>
-        public string Read()
+        public ReadOnlySpan<char> Read()
         {
             var canRead = false;
             for (; this.position < this.STR.Length; this.position++)
@@ -35,21 +35,21 @@ namespace NBoardLocalGameServer
                 }
 
             if (!canRead)
-                return "\0";
+                return "\0".AsSpan();
 
             int count;
             for (count = 1; this.position + count < this.STR.Length && this.STR[this.position + count] != ' '; count++) ;
 
             var start = this.position;
             this.position += count;
-            return this.STR.AsSpan(start, count).ToString();
+            return this.STR.AsSpan(start, count);
         }
 
         /// <summary>
         /// offsetから空白文字以外の文字が始まる位置を探し、そこから終端までの部分文字列を返す.
         /// </summary>
         /// <returns></returns>
-        public string ReadToEnd()
+        public ReadOnlySpan<char> ReadToEnd()
         {
             var canRead = false;
             for (; this.position < this.STR.Length; this.position++)
@@ -64,7 +64,7 @@ namespace NBoardLocalGameServer
 
             var ret = this.STR.AsSpan(this.position, this.STR.Length - this.position);
             this.position = this.STR.Length;
-            return ret.ToString();
+            return ret;
         }
     }
 }
