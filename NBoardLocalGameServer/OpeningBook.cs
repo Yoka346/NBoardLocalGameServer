@@ -1,9 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 using NBoardLocalGameServer.Reversi;
 
@@ -13,19 +10,26 @@ namespace NBoardLocalGameServer
     /// 序盤進行集. テキストファイルからロードする.
     /// 
     /// テキストファイルのフォーマットは, 各行に棋譜が記述されたもの.
-    /// 棋譜の形式は [盤面('*': 黒, 'O': 白, '-': 空きマス)] [着手(F5D6C3...形式)] [手番('*': 黒, 'O': 白)]
+    /// 棋譜の形式は [盤面('*': 黒, 'O': 白, '-': 空きマス)] [手番('*': 黒, 'O': 白)] [着手(F5D6C3...形式)]
     /// 
     /// ex)
     /// ---------------------------O*------O*--------------------------- F5D6C3 * 
     /// </summary>
-    internal static class OpeningBook
+    internal class OpeningBook
     {
-        public static List<BookItem> Load(string path)
+        public static OpeningBook Empty { get; } = new();
+
+        public int Count => this.book.Count;
+
+        readonly List<BookItem> book;
+        int loc = 0;
+
+        public OpeningBook(string path)
         {
             var sr = new StreamReader(path);
-            var book = new List<BookItem>();
+            this.book = new List<BookItem>();
             var lineCount = 0;
-            while(sr.Peek() != -1)
+            while (sr.Peek() != -1)
             {
                 lineCount++;
 
@@ -33,10 +37,15 @@ namespace NBoardLocalGameServer
                 if (line is null || line == string.Empty)
                     continue;
 
-                book.Add(ParseBookItem(line, lineCount));
+                this.book.Add(ParseBookItem(line, lineCount));
             }
-            return book;
         }
+
+        OpeningBook() => this.book = new List<BookItem>(0);
+
+        public BookItem GetItem() => this.book[loc++ % this.book.Count];
+        public void Shuffle() => Shuffle(Random.Shared);
+        public void Shuffle(Random rand) => rand.Shuffle(this.book);
 
         static BookItem ParseBookItem(string str, int lineNum)
         {
@@ -56,7 +65,18 @@ namespace NBoardLocalGameServer
                     throw new FormatException($"Charcter \'{ch}\' at line {lineNum} is invalid. It must be '*', 'O' or '-'.");
             }
 
+            var sideToMoveCh = sr.Read()[0];
+            if (sideToMoveCh == '*')
+                item.Position.SideToMove = DiscColor.Black;
+            else if (sideToMoveCh == 'O')
+                item.Position.SideToMove = DiscColor.White;
+            else
+                throw new FormatException($"Charcter \'{sideToMoveCh}\' at line {lineNum} is invalid. It must be '*' or 'O'.");
+
             var movesStr = sr.Read();
+            if (movesStr[0] == '\0')
+                return item;
+
             for(var i = 0; i < movesStr.Length; i += 2)
             {
                 var move = ReversiTypes.ParseCoordinate(movesStr[i..2]);

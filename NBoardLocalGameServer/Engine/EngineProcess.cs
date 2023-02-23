@@ -35,7 +35,9 @@ namespace NBoardLocalGameServer.Engine
         {
             this.PROCESS = process;
             this.PROCESS.OutputDataReceived += Process_OutputDataReceived;
+            this.PROCESS.ErrorDataReceived += PROCESS_ErrorDataReceived;
             this.PROCESS.BeginOutputReadLine();
+            this.PROCESS.BeginErrorReadLine();
         }
 
         /// <summary>
@@ -51,7 +53,8 @@ namespace NBoardLocalGameServer.Engine
                 CreateNoWindow = true,
                 UseShellExecute = false,
                 RedirectStandardInput = true,
-                RedirectStandardOutput = true
+                RedirectStandardOutput = true,
+                RedirectStandardError= true
             };
 
             if (workDir != string.Empty)
@@ -102,6 +105,9 @@ namespace NBoardLocalGameServer.Engine
                     this.OnNonResponceTextRecieved.Invoke(this, e.Data);
             }
         }
+
+        void PROCESS_ErrorDataReceived(object sender, DataReceivedEventArgs e)
+            => Debug.WriteLine($"{this.PROCESS.ProcessName}(PID: {this.PROCESS.Id}) -?> Server: {e.Data}");
 
         /// <summary>
         /// エンジンに送ったコマンドからの応答を格納するクラス.
@@ -154,7 +160,7 @@ namespace NBoardLocalGameServer.Engine
 
         /// <summary>
         /// エンジンからの応答文字列は, このクラスのオブジェクトに包む. 
-        /// Responceクラスのコンストラクタには, ResponceValueオブジェクトを渡す. このようにすることで, ResponceValueオブジェクトを介してエンジンの応答結果をResponceオブジェクトに渡せるので, 
+        /// Responceクラスのコンストラクタには, ResponceValueFutureオブジェクトを渡す. このようにすることで, ResponceValueオブジェクトを介してエンジンの応答結果をResponceオブジェクトに渡せるので, 
         /// Responce.Resultのsetterをpublicにする必要がなくなる.
         /// </summary>
         public class ResponceValueFuture { public string? Value { get; set; } = null; }

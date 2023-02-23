@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
+using System.Text;
 
 namespace NBoardLocalGameServer.Reversi
 {
@@ -22,7 +23,7 @@ namespace NBoardLocalGameServer.Reversi
             }
         }
 
-        public DiscColor OpponentColor => this.sideToMove ^ DiscColor.White; 
+        public DiscColor OpponentColor => ReversiTypes.ToOpponent(this.sideToMove); 
         public int EmptySquareCount => this.bitboard.EmptyCount;
         public int PlayerDiscCount => this.bitboard.PlayerDiscCount;
         public int OpponentDiscCount => this.bitboard.OpponentDiscCount; 
@@ -50,6 +51,14 @@ namespace NBoardLocalGameServer.Reversi
         {
             this.bitboard = bitboard;
             this.sideToMove = sideToMove;
+        }
+
+        public Position(Position pos)
+        {
+            this.bitboard = pos.bitboard;
+            this.sideToMove = pos.sideToMove;
+            foreach (var move in pos.moveHistory.Reverse())
+                this.moveHistory.Push(move);
         }
 
         public static bool operator ==(Position left, Position right) => left.sideToMove == right.sideToMove && left.bitboard == right.bitboard;
@@ -121,6 +130,12 @@ namespace NBoardLocalGameServer.Reversi
             if(!IsLegal(move))
                 return false;
 
+            if(move == BoardCoordinate.PA)
+            {
+                Pass();
+                return true;
+            }
+
             var m = new Move
             {
                 Color= this.sideToMove,
@@ -142,6 +157,45 @@ namespace NBoardLocalGameServer.Reversi
             var move = this.moveHistory.Pop();
             this.bitboard.Undo(move.Coord, move.Flipped);
             return true;
+        }
+
+        public DiscColor GetWinner()
+        {
+            if (!this.IsGameOver)
+                return DiscColor.Null;
+
+            var diff = this.bitboard.PlayerDiscCount - this.bitboard.OpponentDiscCount;
+            if (diff == 0)
+                return DiscColor.Null; 
+
+            return (diff > 0) ? this.SideToMove : this.OpponentColor;
+        }
+
+        public override string ToString()
+        {
+            var sb = new StringBuilder();
+            sb.Append("  ");
+            for (var i = 0; i < BOARD_SIZE; i++)
+                sb.Append((char)('A' + i)).Append(' ');
+
+            var p = this.bitboard.Player;
+            var o = this.bitboard.Opponent;
+            var mask = 1UL << (SQUARE_NUM - 1);
+            for (var y = 0; y < BOARD_SIZE; y++)
+            {
+                sb.Append('\n').Append(y + 1).Append(' ');
+                for (var x = 0; x < BOARD_SIZE; x++)
+                {
+                    if ((p & mask) != 0)
+                        sb.Append((this.SideToMove == DiscColor.Black) ? "X " : "O ");
+                    else if ((o & mask) != 0)
+                        sb.Append((this.SideToMove != DiscColor.Black) ? "X " : "O ");
+                    else
+                        sb.Append(". ");
+                    mask >>= 1;
+                }
+            }
+            return sb.ToString();
         }
     }
 }

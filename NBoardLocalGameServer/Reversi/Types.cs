@@ -31,6 +31,14 @@ namespace NBoardLocalGameServer.Reversi
         PA, Null
     };
 
+    enum GameResult
+    {
+        Win,
+        Loss,
+        Draw,
+        NotOver
+    }
+
     struct Move
     {
         public DiscColor Color { get; set; }
@@ -47,9 +55,14 @@ namespace NBoardLocalGameServer.Reversi
 
     internal static class ReversiTypes
     {
+        public static DiscColor ToOpponent(DiscColor color) => color ^ DiscColor.White;
+
         public static BoardCoordinate ParseCoordinate(ReadOnlySpan<char> str)
         {
             str = str.Trim();
+            if (str.CompareTo("PA", StringComparison.OrdinalIgnoreCase) == 0)
+                return BoardCoordinate.PA;
+
             Span<char> lstr = stackalloc char[str.Length];
             for (var i = 0; i < lstr.Length; i++)
                 lstr[i] = char.ToLower(str[i]);
@@ -57,7 +70,7 @@ namespace NBoardLocalGameServer.Reversi
             if (str.Length < 2 || lstr[0] < 'a' || lstr[0] > 'h' || lstr[1] < '1' || lstr[1] > '8')
                 return BoardCoordinate.Null;
 
-            return (BoardCoordinate)(lstr[0] + lstr[1] * BOARD_SIZE);
+            return (BoardCoordinate)((lstr[0] - 'a') + (lstr[1] - '1') * BOARD_SIZE);
         }
     }
 }

@@ -1,10 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.IO;
-using System.Text;
+﻿using System.IO;
 using System.Text.Json;
-using System.Threading.Tasks;
 
 namespace NBoardLocalGameServer
 {
@@ -21,20 +16,35 @@ namespace NBoardLocalGameServer
         public bool SwapPlayer { get; set; } = true;
 
         /// <summary>
+        /// 手番を入れ替えたとき, 手番入れ替える前と同じ局面で再対局するか, もしくは別の局面を用意するか.
+        /// SwapPlayerがtrueのときのみ有効.
+        /// </summary>
+        public bool UseSamePositionWhenSwapPlayer { get; set; } = true;
+
+        /// <summary>
         /// 序盤のBook.
         /// </summary>
         public string OpeningBookPath { get; set; } = string.Empty;
 
-        // 何手目までBookに従うかどうかはMinBookMoveNum以上MaxBookMoveNum以下の乱数で決める.
         /// <summary>
-        /// Bookに従う手数の最小値.
+        /// 初期局面の空きマスの最小値.
         /// </summary>
-        public int MinBookMoveNum { get; set; } = 10;
+        public int MinInitialEmptySquareNum { get; set; } = 40;
 
         /// <summary>
-        /// Bookに従う手数の最大値.
+        /// 初期局面の空きマスの最大値.
         /// </summary>
-        public int MaxBookMoveNum { get; set; } = 21;
+        public int MaxInitialEmptySquareNum { get; set; } = 60;
+
+        /// <summary>
+        /// 棋譜の保存先.
+        /// </summary>
+        public string GameLogPath { get; set; } = "game.ggf";
+
+        /// <summary>
+        /// 対局の統計データの保存先.
+        /// </summary>
+        public string GameStatsPath { get; set; } = "stats.json";
 
         public static GameConfig? Load(string path) => JsonSerializer.Deserialize<GameConfig>(File.ReadAllText(path));
         public void Save(string path)

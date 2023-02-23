@@ -1,51 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.IO;
-using System.Text.Json;
 using System.Threading;
 
 using NBoardLocalGameServer.Reversi;
 
 namespace NBoardLocalGameServer.Engine
 {
-    internal class EngineConfig
-    {
-        public string Path { get; set; }
-        public string Arguments { get; set; }
-        public string WorkDir { get; set; }
-
-        /// <summary>
-        /// エンジン起動時にまとめて送るコマンド.
-        /// 対局前にエンジンの設定をしたいときに用いる.
-        /// </summary>
-        public string[] InitialCommands { get; set; }
-
-        public EngineConfig() : this("", "", "", Enumerable.Empty<string>()) { }
-
-        public EngineConfig(string path, string args, string workDir, IEnumerable<string> initialCmds)
-        {
-            this.Path = path;
-            this.Arguments = args;
-            this.WorkDir = workDir;
-            this.InitialCommands = initialCmds.ToArray();
-        }
-
-        public EngineConfig(EngineConfig config)
-        {
-            this.Path = config.Path;
-            this.Arguments = config.Arguments;
-            this.WorkDir = config.WorkDir;
-            this.InitialCommands = (string[])config.InitialCommands.Clone();
-        }
-
-        public static EngineConfig? Load(string path)
-            => JsonSerializer.Deserialize<EngineConfig>(File.ReadAllText(path));
-
-        public void Save(string path)
-            => File.WriteAllText(path, JsonSerializer.Serialize(this, new JsonSerializerOptions { WriteIndented = true }));
-    }
-
     /// <summary>
     /// NBoardプロトコルに準拠した思考エンジンとやり取りをするクラス.
     /// </summary>
@@ -78,7 +39,8 @@ namespace NBoardLocalGameServer.Engine
 
         public event EventHandler ExitedUnexpectedly = delegate { };
 
-        readonly EngineConfig CONFIG;
+        readonly string PATH, ARGS, WORK_DIR_PATH;
+        readonly string[] INIT_COMMANDS;
         EngineProcess? process;
 
         volatile int isThinking = 0;
@@ -88,20 +50,28 @@ namespace NBoardLocalGameServer.Engine
 
         int pingCount = 0;
 
-        public NBoardEngine(EngineConfig config) => this.CONFIG = new(config);
+        public NBoardEngine(string path, string args, string workDirPath, IEnumerable<string> initialCommands)
+        {
+            this.PATH = path;
+            this.ARGS = args;
+            this.WORK_DIR_PATH = workDirPath;
+            this.INIT_COMMANDS = initialCommands.ToArray();
+        }
 
         public bool Run()
         {
-            this.process = EngineProcess.Start(this.CONFIG.Path, this.CONFIG.Arguments, this.CONFIG.WorkDir);
+            this.process = EngineProcess.Start(this.PATH, this.ARGS, this.WORK_DIR_PATH);
             if (this.process is null)
                 return false;
 
             this.process.Exited += Process_Exited;
             this.process.OnNonResponceTextRecieved += Process_OnNonResponceTextRecieved;
 
+            Thread.Sleep(1000);     // Edaxの場合, 1秒ほど待ってからコマンドを送らないとエラーを出して終了することがある.
+
             SendCommand($"nboard {NBOARD_VERSION}");
 
-            foreach (var cmd in this.CONFIG.InitialCommands)
+            foreach (var cmd in this.INIT_COMMANDS)
                 SendCommand(cmd);
 
             return true;
@@ -158,15 +128,13 @@ namespace NBoardLocalGameServer.Engine
             if (!this.IsThinking)
                 return (BoardCoordinate.Null, 0);
 
+            Interlocked.Exchange(ref this.isThinking, 0);
+
             var endTime = Environment.TickCount;
 
             var sr = new IgnoreSpaceStringReader(responce.Result);
-            sr.Read();
-            var moveStr = sr.ReadToEnd();
-            var idx = moveStr.IndexOf('/');
-            if (idx != -1)
-                moveStr = moveStr[..idx];
-
+            sr.Read();  // "==="の読み飛ばし.
+            var moveStr = sr.Read();
             var move = ReversiTypes.ParseCoordinate(moveStr);
             if (move == BoardCoordinate.Null)
                 throw new NBoardProtocolException($"Recieved move string \"{moveStr}\" was invalid.");
